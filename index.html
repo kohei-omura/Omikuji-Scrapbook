@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>御神籤帖</title>
+<meta name="description" content="神社で引いたおみくじを写真で記録し、これからの指針を受け取る帖">
+<meta name="theme-color" content="#B3424A">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="御神籤帖">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="head">
+  <svg class="torii" viewBox="0 0 48 40" aria-hidden="true">
+    <path d="M4 8 H44 L42 12 H6 Z"/>
+    <rect x="8" y="15" width="32" height="3.4" rx="1"/>
+    <path d="M12 12 L14.5 38 H10.2 Z"/>
+    <path d="M36 12 L33.5 38 H37.8 Z"/>
+  </svg>
+  <h1>御神籤帖</h1>
+  <span class="head-sub">ごしんせんちょう</span>
+</header>
+
+<main id="main">
+
+  <!-- ── 1 記録する ── -->
+  <section id="tab-record" class="tab is-on">
+    <h2 class="sec">おみくじを記録する</h2>
+
+    <div class="card">
+      <div class="shot">
+        <div id="preview" class="preview" data-empty="写真を選ぶと ここに表示されます"></div>
+        <div class="shot-btns">
+          <label class="btn btn-line">
+            <input type="file" id="pick-camera" accept="image/*" capture="environment" hidden>
+            写真を撮る
+          </label>
+          <label class="btn btn-line">
+            <input type="file" id="pick-album" accept="image/*" hidden>
+            アルバムから選ぶ
+          </label>
+        </div>
+      </div>
+
+      <button id="btn-ocr" class="btn btn-fill" disabled>写真から文字を読み取る</button>
+      <div id="ocr-bar" class="ocr" hidden>
+        <div class="ocr-track"><span id="ocr-fill"></span></div>
+        <p id="ocr-msg" class="ocr-msg">準備しています…</p>
+      </div>
+      <p class="note">読み取りは誤りが出ます。かならず目で確かめて直してください。</p>
+    </div>
+
+    <form id="form" class="card" autocomplete="off">
+      <label class="fld">
+        <span>参拝日</span>
+        <input type="date" id="f-date" required>
+      </label>
+
+      <label class="fld">
+        <span>神社名</span>
+        <input type="text" id="f-shrine" list="shrine-list" placeholder="例）伊勢神宮">
+        <datalist id="shrine-list"></datalist>
+      </label>
+
+      <div class="fld-row">
+        <label class="fld">
+          <span>番号</span>
+          <input type="text" id="f-no" placeholder="第三十番">
+        </label>
+        <label class="fld">
+          <span>運勢</span>
+          <select id="f-fortune">
+            <option value="">未選択</option>
+            <option>大吉</option><option>中吉</option><option>小吉</option>
+            <option>吉</option><option>末吉</option><option>凶</option><option>大凶</option>
+            <option value="__custom">その他（自分で書く）</option>
+          </select>
+        </label>
+      </div>
+      <label class="fld" id="fld-custom" hidden>
+        <span>運勢（自由記入）</span>
+        <input type="text" id="f-fortune-custom" placeholder="例）平">
+      </label>
+
+      <label class="fld">
+        <span>総評</span>
+        <textarea id="f-summary" rows="3" placeholder="おみくじ本文の要旨"></textarea>
+      </label>
+
+      <details class="acc" open>
+        <summary>項目別（空欄のままでも保存できます）</summary>
+        <div id="sections"></div>
+      </details>
+
+      <label class="fld">
+        <span>メモ</span>
+        <textarea id="f-memo" rows="2" placeholder="そのときの気持ち、願いごとなど"></textarea>
+      </label>
+
+      <div class="fld">
+        <span>おみくじの行方</span>
+        <div class="seg" id="f-keep">
+          <button type="button" class="seg-b is-on" data-v="持ち帰った">持ち帰った</button>
+          <button type="button" class="seg-b" data-v="結んだ">結んだ</button>
+        </div>
+      </div>
+
+      <div class="form-btns">
+        <button type="submit" class="btn btn-fill">帖に納める</button>
+        <button type="button" id="btn-reset" class="btn btn-line">入力を消す</button>
+      </div>
+      <input type="hidden" id="f-id">
+    </form>
+  </section>
+
+  <!-- ── 2 みくじ帖 ── -->
+  <section id="tab-list" class="tab">
+    <h2 class="sec">みくじ帖</h2>
+    <div class="card filters">
+      <div class="fld-row">
+        <label class="fld"><span>神社</span>
+          <select id="q-shrine"><option value="">すべて</option></select></label>
+        <label class="fld"><span>運勢</span>
+          <select id="q-fortune"><option value="">すべて</option></select></label>
+      </div>
+      <div class="fld-row">
+        <label class="fld"><span>年月</span>
+          <select id="q-month"><option value="">すべて</option></select></label>
+        <label class="fld"><span>並び</span>
+          <select id="q-sort">
+            <option value="desc">新しい順</option>
+            <option value="asc">古い順</option>
+          </select></label>
+      </div>
+    </div>
+    <p id="list-count" class="count"></p>
+    <div id="list" class="list"></div>
+  </section>
+
+  <!-- ── 3 指針 ── -->
+  <section id="tab-guide" class="tab">
+    <h2 class="sec">指針</h2>
+    <div id="guide"></div>
+  </section>
+
+  <!-- ── 4 統計 ── -->
+  <section id="tab-stats" class="tab">
+    <h2 class="sec">統計</h2>
+    <div id="stats"></div>
+  </section>
+
+  <!-- ── 5 設定 ── -->
+  <section id="tab-settings" class="tab">
+    <h2 class="sec">設定</h2>
+
+    <div class="card">
+      <h3 class="ttl">表示</h3>
+      <div class="row-between">
+        <span>夜の帖（ダークモード）</span>
+        <button id="btn-theme" class="btn btn-line btn-sm">切り替える</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 class="ttl">控えを取る</h3>
+      <p class="note">写真も含めた全記録を1つのファイルに書き出します。</p>
+      <button id="btn-export" class="btn btn-fill">書き出す（JSON）</button>
+      <p class="note" style="margin-top:14px">書き出したファイルから戻します。いまの記録に追加されます。</p>
+      <label class="btn btn-line">
+        <input type="file" id="btn-import" accept="application/json,.json" hidden>
+        読み込む（JSON）
+      </label>
+    </div>
+
+    <div class="card">
+      <h3 class="ttl">すべて消す</h3>
+      <p class="note">記録と写真をすべて削除します。元に戻せません。</p>
+      <button id="btn-clear" class="btn btn-danger">全部消す</button>
+    </div>
+
+    <div class="card">
+      <h3 class="ttl">使い方</h3>
+      <button id="btn-guide-again" class="btn btn-line">案内をもう一度見る</button>
+    </div>
+
+    <p class="ver">御神籤帖 — 記録はこの端末の中だけに保存されます</p>
+  </section>
+
+</main>
+
+<nav class="tabs" id="nav">
+  <button class="tb is-on" data-tab="record"><span>記録</span></button>
+  <button class="tb" data-tab="list"><span>みくじ帖</span></button>
+  <button class="tb" data-tab="guide"><span>指針</span></button>
+  <button class="tb" data-tab="stats"><span>統計</span></button>
+  <button class="tb" data-tab="settings"><span>設定</span></button>
+</nav>
+
+<!-- 詳細 -->
+<div id="sheet" class="sheet" hidden>
+  <div class="sheet-in">
+    <button id="sheet-close" class="sheet-x" aria-label="閉じる">×</button>
+    <div id="sheet-body"></div>
+  </div>
+</div>
+
+<!-- 初回案内 -->
+<div id="tour" class="tour" hidden>
+  <div class="tour-in">
+    <div id="tour-body"></div>
+    <div class="tour-btns">
+      <button id="tour-skip" class="btn btn-line btn-sm">とばす</button>
+      <button id="tour-next" class="btn btn-fill btn-sm">次へ</button>
+    </div>
+    <div id="tour-dots" class="tour-dots"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="db.js"></script>
+<script src="ocr.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
