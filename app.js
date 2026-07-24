@@ -9,7 +9,7 @@
   var KYO = ['凶', '大凶'];
   var LABELS = window.OCR ? window.OCR.labels : [];
 
-  var state = { records: [], photo: null, photoUrl: null, urls: [] };
+  var state = { records: [], photo: null, orig: null, photoUrl: null, urls: [] };
 
   /* ───────── 共通 ───────── */
 
@@ -120,10 +120,37 @@
       pv.appendChild(img);
       pv.classList.add('has');
       $('#btn-ocr').disabled = false;
+      $('#rot-btns').hidden = false;
     } else {
       pv.classList.remove('has');
       $('#btn-ocr').disabled = true;
+      $('#rot-btns').hidden = true;
     }
+  }
+
+
+  /** 写真を90度ずつ回す（読み取りが合わないときの手直し用） */
+  function rotatePhoto(deg) {
+    var src = state.photo;
+    if (!src) return;
+    var url = URL.createObjectURL(src);
+    var img = new Image();
+    img.onload = function () {
+      var cv = document.createElement('canvas');
+      cv.width = img.naturalHeight; cv.height = img.naturalWidth;
+      var c = cv.getContext('2d');
+      c.translate(cv.width / 2, cv.height / 2);
+      c.rotate(deg * Math.PI / 180);
+      c.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+      URL.revokeObjectURL(url);
+      cv.toBlob(function (b) {
+        if (!b) { toast('写真を回せませんでした', true); return; }
+        state.orig = b;
+        setPhoto(b);
+      }, 'image/jpeg', 0.9);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); toast('写真を回せませんでした', true); };
+    img.src = url;
   }
 
   function onPick(e) {
@@ -131,6 +158,7 @@
     e.target.value = '';
     if (!f) return;
     if (!/^image\//.test(f.type)) { toast('画像ファイルを選んでください', true); return; }
+    state.orig = f;
     shrink(f).then(setPhoto).catch(function (err) { toast(err.message, true); });
   }
 
@@ -244,7 +272,7 @@
     bar.hidden = false; fill.style.width = '0%'; msg.textContent = '準備しています…';
     $('#btn-ocr').disabled = true;
 
-    OCR.run(state.photo, function (pct, label) {
+    OCR.run(state.orig || state.photo, function (pct, label) {
       fill.style.width = pct + '%';
       msg.textContent = label + '（' + pct + '％）';
     }).then(function (p) {
@@ -263,9 +291,20 @@
         }
       });
       fill.style.width = '100%';
+      if (p.angle) {
+        var d = document.createElement('p');
+        d.className = 'note';
+        d.textContent = '写真が倒れていたので ' + p.angle + '° 起こして読み取りました。';
+        msg.parentNode.appendChild(d);
+        setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 8000);
+      }
+      if (!p.fortune) {
+        var sel = document.getElementById('f-fortune');
+        if (sel) { sel.style.outline = '2px solid var(--kin)'; setTimeout(function(){ sel.style.outline=''; }, 6000); }
+      }
       msg.textContent = filled.length
-        ? '読み取りました：' + filled.join('・') + '　内容を確かめてください'
-        : '文字は読めましたが項目に当てはめられませんでした。手で入力してください';
+        ? '読み取りました：' + filled.join('・') + (p.fortune ? '' : '　※運勢は読めませんでした。選んでください') + '　内容を確かめてください'
+        : '項目に当てはめられませんでした。「左に回す／右に回す」で向きを直してもう一度お試しください';
       if (!filled.length && p.raw) {
         if (!$('#f-summary').value) $('#f-summary').value = p.raw.slice(0, 200);
       }
@@ -833,6 +872,8 @@
     $('#pick-camera').addEventListener('change', onPick);
     $('#pick-album').addEventListener('change', onPick);
     $('#btn-ocr').addEventListener('click', runOcr);
+    $('#rot-l').addEventListener('click', function () { rotatePhoto(-90); });
+    $('#rot-r').addEventListener('click', function () { rotatePhoto(90); });
     $('#form').addEventListener('submit', submitForm);
     $('#btn-reset').addEventListener('click', function () {
       resetForm(); toast('入力を消しました');
