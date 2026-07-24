@@ -290,3 +290,4 @@ main{max-width:560px;margin:0 auto;padding:14px 14px 24px}
 @media (prefers-reduced-motion:reduce){
   *{animation:none !important;transition:none !important}
 }
+[hidden]{display:none !important}
