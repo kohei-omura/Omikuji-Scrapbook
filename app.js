@@ -119,12 +119,12 @@
       img.alt = 'おみくじの写真';
       pv.appendChild(img);
       pv.classList.add('has');
-      $('#btn-ocr').disabled = false;
       $('#rot-btns').hidden = false;
+      syncOcrButton();
     } else {
       pv.classList.remove('has');
-      $('#btn-ocr').disabled = true;
       $('#rot-btns').hidden = true;
+      syncOcrButton();
     }
   }
 
@@ -264,10 +264,18 @@
 
   function runOcr() {
     if (!state.photo) { toast('先に写真を選んでください', true); return; }
-    if (!navigator.onLine) {
-      toast('オフラインのため読み取れません。手で入力してください', true);
+    if (!OCR.online()) {
+      toast('電波のある場所で読み取れます', true);
+      syncOcrButton();
       return;
     }
+    if (!OCR.hasKey()) {
+      toast('先に設定でGemini APIキーを入れてください', true);
+      show('settings');
+      setTimeout(function () { var k = $('#f-key'); if (k) k.focus(); }, 200);
+      return;
+    }
+
     var bar = $('#ocr-bar'), fill = $('#ocr-fill'), msg = $('#ocr-msg');
     bar.hidden = false; fill.style.width = '0%'; msg.textContent = '準備しています…';
     $('#btn-ocr').disabled = true;
@@ -277,12 +285,13 @@
       msg.textContent = label + '（' + pct + '％）';
     }).then(function (p) {
       var filled = [];
+      if (p.shrine && !$('#f-shrine').value) { $('#f-shrine').value = p.shrine; filled.push('神社名'); }
+      if (p.no && !$('#f-no').value) { $('#f-no').value = p.no; filled.push('番号'); }
       if (p.fortune) {
         $('#f-fortune').value = p.fortune;
         $('#fld-custom').hidden = true;
         filled.push('運勢');
       }
-      if (p.no) { $('#f-no').value = p.no; filled.push('番号'); }
       if (p.summary && !$('#f-summary').value) { $('#f-summary').value = p.summary; filled.push('総評'); }
       LABELS.forEach(function (L) {
         if (p.sections[L.key] && !$('#s-' + L.key).value) {
@@ -291,30 +300,71 @@
         }
       });
       fill.style.width = '100%';
-      if (p.angle) {
-        var d = document.createElement('p');
-        d.className = 'note';
-        d.textContent = '写真が倒れていたので ' + p.angle + '° 起こして読み取りました。';
-        msg.parentNode.appendChild(d);
-        setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 8000);
-      }
       if (!p.fortune) {
-        var sel = document.getElementById('f-fortune');
-        if (sel) { sel.style.outline = '2px solid var(--kin)'; setTimeout(function(){ sel.style.outline=''; }, 6000); }
+        var sel = $('#f-fortune');
+        if (sel) { sel.style.outline = '2px solid var(--kin)'; setTimeout(function () { sel.style.outline = ''; }, 6000); }
       }
       msg.textContent = filled.length
-        ? '読み取りました：' + filled.join('・') + (p.fortune ? '' : '　※運勢は読めませんでした。選んでください') + '　内容を確かめてください'
-        : '項目に当てはめられませんでした。「左に回す／右に回す」で向きを直してもう一度お試しください';
-      if (!filled.length && p.raw) {
-        if (!$('#f-summary').value) $('#f-summary').value = p.raw.slice(0, 200);
-      }
-      toast('読み取りが終わりました。内容を確かめてください');
+        ? '読み取りました：' + filled.join('・') +
+          (p.fortune ? '' : '　※運勢は読めませんでした。選んでください') + '　内容を確かめてください'
+        : '項目を読み取れませんでした。向きを直すか、明るい場所で撮り直してお試しください';
+      toast(filled.length ? '読み取りました。内容を確かめてください' : '項目を読み取れませんでした', !filled.length);
     }).catch(function (err) {
       bar.hidden = true;
       toast(err.message || '読み取れませんでした', true);
+      if (err && err.needKey) {
+        show('settings');
+        setTimeout(function () { var k = $('#f-key'); if (k) k.focus(); }, 200);
+      }
     }).then(function () {
-      $('#btn-ocr').disabled = false;
+      syncOcrButton();
     });
+  }
+
+  /** 電波とAPIキーの状態に応じて読み取りボタンを整える */
+  function syncOcrButton() {
+    var b = $('#btn-ocr');
+    if (!b) return;
+    if (!OCR.online()) {
+      b.disabled = true;
+      b.textContent = '電波のある場所で読み取れます';
+      return;
+    }
+    b.textContent = '写真から文字を読み取る';
+    b.disabled = !state.photo;
+  }
+
+  /* ───────── APIキー ───────── */
+
+  function renderKeyState() {
+    var el = $('#key-state');
+    if (!el) return;
+    if (OCR.hasKey()) {
+      var k = OCR.getKey();
+      el.innerHTML = '<span style="color:var(--kin)">保存済み（…' +
+        esc(k.slice(-4)) + '）　読み取りが使えます</span>';
+    } else {
+      el.textContent = 'まだ入っていません。キーを入れると写真の読み取りが使えます。';
+    }
+  }
+
+  function saveKey() {
+    var v = $('#f-key').value.trim();
+    if (!v) { toast('キーを入れてください', true); return; }
+    OCR.setKey(v);
+    $('#f-key').value = '';
+    renderKeyState();
+    syncOcrButton();
+    toast('APIキーを保存しました');
+  }
+
+  function clearKey() {
+    if (!confirm('保存したAPIキーを消します。よろしいですか？')) return;
+    OCR.setKey('');
+    $('#f-key').value = '';
+    renderKeyState();
+    syncOcrButton();
+    toast('APIキーを消しました');
   }
 
   /* ───────── みくじ帖 ───────── */
@@ -902,6 +952,10 @@
       if (e.target === this) closeSheet();
     });
 
+    $('#btn-key-save').addEventListener('click', saveKey);
+    $('#btn-key-clear').addEventListener('click', clearKey);
+    renderKeyState();
+    syncOcrButton();
     $('#btn-theme').addEventListener('click', toggleTheme);
     $('#btn-export').addEventListener('click', exportAll);
     $('#btn-import').addEventListener('change', function (e) {
@@ -921,8 +975,10 @@
       if ($('#tab-stats').classList.contains('is-on')) renderStats();
     });
     window.addEventListener('offline', function () {
+      syncOcrButton();
       toast('オフラインになりました。読み取りは使えませんが、記録はできます');
     });
+    window.addEventListener('online', function () { syncOcrButton(); });
 
     reload().then(function () {
       if (!localStorage.getItem('gsc.tour')) showTour(0);

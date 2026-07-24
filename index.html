@@ -165,6 +165,21 @@
     <h2 class="sec">設定</h2>
 
     <div class="card">
+      <h3 class="ttl">写真の読み取り（Gemini）</h3>
+      <p class="note" style="margin-top:0">読み取りにはGoogleのGemini APIキーが要ります。キーはこの端末にだけ保存され、控え（JSON）には含めません。</p>
+      <label class="fld" style="margin-top:10px">
+        <span>Gemini APIキー</span>
+        <input type="password" id="f-key" placeholder="AIza… から始まる文字列" autocomplete="off">
+      </label>
+      <div class="shot-btns">
+        <button type="button" class="btn btn-fill" id="btn-key-save">保存する</button>
+        <button type="button" class="btn btn-line" id="btn-key-clear">消す</button>
+      </div>
+      <p id="key-state" class="note"></p>
+      <p class="note">キーは Google AI Studio（aistudio.google.com/apikey）で作れます。</p>
+    </div>
+
+    <div class="card">
       <h3 class="ttl">表示</h3>
       <div class="row-between">
         <span>夜の帖（ダークモード）</span>
