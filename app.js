@@ -308,6 +308,7 @@
         ? '読み取りました：' + filled.join('・') +
           (p.fortune ? '' : '　※運勢は読めませんでした。選んでください') + '　内容を確かめてください'
         : '項目を読み取れませんでした。向きを直すか、明るい場所で撮り直してお試しください';
+      renderModels();
       toast(filled.length ? '読み取りました。内容を確かめてください' : '項目を読み取れませんでした', !filled.length);
     }).catch(function (err) {
       bar.hidden = true;
@@ -348,6 +349,38 @@
     }
   }
 
+
+  function renderModels() {
+    var sel = $('#f-model');
+    if (!sel) return;
+    var list = OCR.cachedList();
+    var cur = OCR.getModel();
+    sel.innerHTML = '<option value="">自動で選ぶ</option>' + list.map(function (m) {
+      return '<option value="' + esc(m.name) + '">' + esc(m.name) + '</option>';
+    }).join('');
+    if (cur && list.some(function (m) { return m.name === cur; })) sel.value = cur;
+    var st = $('#model-state');
+    if (st) {
+      st.textContent = cur ? ('いま使うモデル：' + cur)
+        : (list.length ? (list.length + '件見つかりました。自動で選びます')
+                       : 'まだ調べていません。キーを入れて「使えるモデルを調べる」を押してください');
+    }
+  }
+
+  function fetchModels() {
+    if (!OCR.hasKey()) { toast('先にAPIキーを保存してください', true); return; }
+    var b = $('#btn-models');
+    b.disabled = true; b.textContent = '調べています…';
+    OCR.listModels().then(function (list) {
+      renderModels();
+      toast(list.length + '件のモデルが使えます');
+    }).catch(function (e) {
+      toast(e.message || 'モデルを調べられませんでした', true);
+    }).then(function () {
+      b.disabled = false; b.textContent = '使えるモデルを調べる';
+    });
+  }
+
   function saveKey() {
     var v = $('#f-key').value.trim();
     if (!v) { toast('キーを入れてください', true); return; }
@@ -356,13 +389,17 @@
     renderKeyState();
     syncOcrButton();
     toast('APIキーを保存しました');
+    fetchModels();
   }
 
   function clearKey() {
     if (!confirm('保存したAPIキーを消します。よろしいですか？')) return;
     OCR.setKey('');
+    OCR.setModel('');
+    try { localStorage.removeItem('gsc.geminiModels'); } catch (e) {}
     $('#f-key').value = '';
     renderKeyState();
+    renderModels();
     syncOcrButton();
     toast('APIキーを消しました');
   }
@@ -953,8 +990,15 @@
     });
 
     $('#btn-key-save').addEventListener('click', saveKey);
+    $('#btn-models').addEventListener('click', fetchModels);
+    $('#f-model').addEventListener('change', function () {
+      OCR.setModel(this.value);
+      renderModels();
+      toast(this.value ? ('モデルを ' + this.value + ' にしました') : 'モデルを自動で選びます');
+    });
     $('#btn-key-clear').addEventListener('click', clearKey);
     renderKeyState();
+    renderModels();
     syncOcrButton();
     $('#btn-theme').addEventListener('click', toggleTheme);
     $('#btn-export').addEventListener('click', exportAll);

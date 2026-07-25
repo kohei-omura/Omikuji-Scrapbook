@@ -20,7 +20,8 @@
 
 - HTML / CSS / JavaScript のみ（フレームワーク不使用・ビルド不要）
 - 保存：IndexedDB（写真はBlobのまま保存）。設定のみ localStorage
-- 写真の読み取り：Google Gemini API（`gemini-2.0-flash`／RESTを直接呼び出し）
+- 写真の読み取り：Google Gemini API（RESTを直接呼び出し）
+  - 使うモデルは**キーで一覧を取り寄せて自動で選びます**（Google側でモデルが入れ替わるため）
   - **読み取りだけは通信とAPIキーが必要**です
   - APIキーは設定タブで登録し、この端末（localStorage）にだけ保存します
   - **控え（JSON）にAPIキーは含まれません**
@@ -45,7 +46,11 @@ README.md         このファイル
 
 1. Google AI Studio（aistudio.google.com/apikey）でAPIキーを作る
 2. アプリの **設定 → 写真の読み取り（Gemini）** にキーを貼り、「保存する」
+   - 保存すると使えるモデルを自動で調べます
 3. 記録タブで写真を選び、「写真から文字を読み取る」
+
+うまく読めないときは、設定の「使えるモデルを調べる」を押し直すか、モデルを手で選んでください。
+提供終了・無料枠0のモデルは自動で読み飛ばし、次の候補に切り替わります。
 
 ## GitHub Pages で公開する手順
 

@@ -176,7 +176,13 @@
         <button type="button" class="btn btn-line" id="btn-key-clear">消す</button>
       </div>
       <p id="key-state" class="note"></p>
-      <p class="note">キーは Google AI Studio（aistudio.google.com/apikey）で作れます。</p>
+      <label class="fld" style="margin-top:10px">
+        <span>使うモデル</span>
+        <select id="f-model"><option value="">自動で選ぶ</option></select>
+      </label>
+      <button type="button" class="btn btn-line" id="btn-models">使えるモデルを調べる</button>
+      <p id="model-state" class="note"></p>
+      <p class="note">キーは Google AI Studio（aistudio.google.com/apikey）で作れます。モデルはGoogle側で入れ替わるため、うまく読めないときは調べ直してください。</p>
     </div>
 
     <div class="card">
